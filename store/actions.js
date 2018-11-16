@@ -1,5 +1,5 @@
 import {
-    SET_ADD_DIALOG,
+    SET_ADD_DIALOG, SET_EDIT_DIALOG,
     SET_ITEM_OBJECT,
     SET_ITEM_VALUE
 } from './actionTypes'
@@ -8,6 +8,13 @@ export const setAddDialog = (addDialog) => ({
     type: SET_ADD_DIALOG,
     payload: {
         addDialog: addDialog
+    }
+});
+
+export const setEditDialog = (editDialog) => ({
+    type: SET_EDIT_DIALOG,
+    payload: {
+        editDialog: editDialog
     }
 });
 

@@ -1,11 +1,14 @@
 import {
     SET_ADD_DIALOG,
+    SET_EDIT_DIALOG,
     SET_ITEM_OBJECT,
     SET_ITEM_VALUE
 } from './actionTypes';
 
 const initialState = {
     addDialog: false,
+    isEdit: false,
+    editDialog: false,
     item: {
         index: 0,
         name: '',
@@ -19,7 +22,13 @@ const reducer = (state = initialState, action) => {
         case SET_ADD_DIALOG:
             return {
                 ...state,
-                addDialog: action.payload.addDialog
+                addDialog: action.payload.addDialog,
+                isEdit: action.payload.isEdit,
+            };
+        case SET_EDIT_DIALOG:
+            return {
+                ...state,
+                editDialog: action.payload.editDialog
             };
         case SET_ITEM_OBJECT:
             return {

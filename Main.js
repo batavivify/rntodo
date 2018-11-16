@@ -8,9 +8,9 @@ import {
     Dimensions
 } from 'react-native';
 import TodoItem from './components/TodoItem/TodoIdem';
-import ButtonWithBackground from "./components/ButtonWithBackground/ButtonWithBackground"
+import ButtonWithBackground from "./components/ButtonWithBackground/ButtonWithBackground";
 import Dialog from "react-native-dialog";
-import {setAddDialog, setItemValue, setItemObject} from "./store/actions";
+import {setAddDialog, setEditDialog, setItemValue, setItemObject} from "./store/actions";
 
 type Props = {};
 
@@ -22,7 +22,6 @@ class Main extends Component<Props> {
         items: []
     };
 
-    // HANDLERS START
     onSaveHandler = () => {
         const item = {
             index: this.props.item.index,
@@ -68,10 +67,8 @@ class Main extends Component<Props> {
     };
 
 
-    // RENDER START
     render() {
 
-        //const items = this.state.items;
 
         return(
             <ScrollView>
@@ -111,12 +108,14 @@ const styles = StyleSheet.create({
 });
 
 const mapStateToProps = state => ({
-   addDialog: state.addDialog,
+    addDialog: state.addDialog,
+    deleteDialog: state.deleteDialog,
    item: state.item
 });
 
 const mapDispatchToProps = dispatch => ({
     setAddDialog: addDialog => dispatch(setAddDialog(addDialog)),
+    setEditDialog: editDialog => dispatch(setEditDialog(editDialog)),
     setItemValue: (name, value) => dispatch(setItemValue(name, value)),
     setItemObject: item => dispatch(setItemObject(item))
 });
