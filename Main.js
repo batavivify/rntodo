@@ -18,8 +18,20 @@ class Main extends Component<Props> {
 
     state = {
         width: Dimensions.get("window").width,
+        selectedTab: 'not_completed',
         editDialog: false,
+        item: {
+            name: '',
+            priority: 0,
+            isCompleted: false
+        },
         items: []
+    };
+
+    onTabClickHandler = selectedTab => {
+        this.setState({
+            selectedTab: selectedTab
+        });
     };
 
     onSaveHandler = () => {
@@ -74,9 +86,20 @@ class Main extends Component<Props> {
         this.props.setAddDialog(false);
     };
 
+    // comparing priorities
+    compare = (a, b) => {
+        if (a.priority < b.priority)
+            return -1;
+        if (a.priority > b.priority)
+            return 1;
+        return 0;
+    };
+
 
     render() {
 
+        const items = this.state.items.filter(item => (item.isCompleted === (this.state.selectedTab === 'completed')));
+        items.sort(this.compare);
         const deleteItemText = `Delete idem "${this.props.item.name}"?`;
 
 
@@ -85,18 +108,26 @@ class Main extends Component<Props> {
                 <View>
                     <ButtonWithBackground color="#0099CC" onPress={() => this.props.setAddDialog(true)}>Add item</ButtonWithBackground>
                 </View>
+                <View style={styles.tabs}>
+                    <View style={styles.tab}>
+                        <ButtonWithBackground color="#0099CC" onPress={() => this.onTabClickHandler('not_completed')} disabled={this.state.selectedTab === 'not_completed'}>Not completed</ButtonWithBackground>
+                    </View>
+                    <View style={styles.tab}>
+                        <ButtonWithBackground color="#0099CC" onPress={() => this.onTabClickHandler('completed')} disabled={this.state.selectedTab === 'completed'}>Completed</ButtonWithBackground>
+                    </View>
+                </View>
                 <View style={styles.container}>
-                    {this.state.items.length > 0 ?
-                        this.state.items.map(item => (
+                    {items.length > 0 ?
+                        items.map(item => (
                             <TodoItem item={item} width={this.state.width} key={item.index}/>
                         )) :
-                        <Text style={{textAlign: 'center'}}> Lista je prazna </Text>}
+                        <Text style={{textAlign: 'center'}}> No tasks. </Text>}
                 </View>
                 <Dialog.Container visible={this.props.addDialog}>
                     <Dialog.Title>Add task</Dialog.Title>
                     <Dialog.Input label="Name" style={styles.input} value={this.props.item.name} onChangeText={(text) => this.props.setItemValue('name', text)} />
                     <Dialog.Input label="Priority" keyboardType="number-pad" style={styles.input} value={this.props.item.priority.toString()} onChangeText={(text) => this.props.setItemValue('priority', text)} />
-                    <Dialog.Switch label="Done?" value={this.props.item.isCompleted}  onValueChange={(value) => this.props.setItemValue('isCompleted', value)} />
+                    <Dialog.Switch label="Completed?" value={this.props.item.isCompleted}  onValueChange={(value) => this.props.setItemValue('isCompleted', value)} />
                     <Dialog.Button label="Cancel" onPress={this.onCancelEditClickHandler} />
                     <Dialog.Button label="Save" onPress={this.onSaveHandler} />
                 </Dialog.Container>
@@ -122,6 +153,13 @@ const styles = StyleSheet.create({
     input: {
         borderWidth: 1,
         borderColor: '#ccc'
+    },
+    tabs: {
+        flexDirection: 'row',
+        flex: 1
+    },
+    tab: {
+        flex: 1
     }
 });
 
