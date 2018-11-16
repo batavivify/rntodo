@@ -1,5 +1,6 @@
 import {
     SET_ADD_DIALOG,
+    SET_DELETE_DIALOG,
     SET_EDIT_DIALOG,
     SET_ITEM_OBJECT,
     SET_ITEM_VALUE
@@ -9,6 +10,7 @@ const initialState = {
     addDialog: false,
     isEdit: false,
     editDialog: false,
+    deleteDialog: false,
     item: {
         index: 0,
         name: '',
@@ -29,6 +31,11 @@ const reducer = (state = initialState, action) => {
             return {
                 ...state,
                 editDialog: action.payload.editDialog
+            };
+        case SET_DELETE_DIALOG:
+            return {
+                ...state,
+                deleteDialog: action.payload.deleteDialog
             };
         case SET_ITEM_OBJECT:
             return {

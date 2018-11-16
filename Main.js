@@ -10,7 +10,7 @@ import {
 import TodoItem from './components/TodoItem/TodoIdem';
 import ButtonWithBackground from "./components/ButtonWithBackground/ButtonWithBackground";
 import Dialog from "react-native-dialog";
-import {setAddDialog, setEditDialog, setItemValue, setItemObject} from "./store/actions";
+import {setDeleteDialog, setAddDialog, setEditDialog, setItemValue, setItemObject} from "./store/actions";
 
 type Props = {};
 
@@ -56,6 +56,14 @@ class Main extends Component<Props> {
         this.props.setAddDialog(false);
     };
 
+    deleteItemHandler = () => {
+      const items = this.state.items.filter(item => item.index !== this.props.item.index);
+      this.setState({
+          items: [ ...items ]
+      });
+      this.props.setDeleteDialog(false);
+    };
+
     onCancelEditClickHandler = () => {
         this.props.setItemObject({
             index: 0,
@@ -68,6 +76,8 @@ class Main extends Component<Props> {
 
 
     render() {
+
+        const deleteItemText = `Delete idem "${this.props.item.name}"?`;
 
 
         return(
@@ -90,6 +100,14 @@ class Main extends Component<Props> {
                     <Dialog.Button label="Cancel" onPress={this.onCancelEditClickHandler} />
                     <Dialog.Button label="Save" onPress={this.onSaveHandler} />
                 </Dialog.Container>
+                <Dialog.Container visible={this.props.deleteDialog}>
+                    <Dialog.Title>Remove task</Dialog.Title>
+                    <Dialog.Description>
+                        {deleteItemText}
+                    </Dialog.Description>
+                    <Dialog.Button label="Cancel" onPress={() => this.props.setDeleteDialog(false)} />
+                    <Dialog.Button label="Delete" onPress={this.deleteItemHandler} />
+                </Dialog.Container>
             </ScrollView>
         );
     }
@@ -108,14 +126,16 @@ const styles = StyleSheet.create({
 });
 
 const mapStateToProps = state => ({
+    editDialog: state.editDialog,
     addDialog: state.addDialog,
     deleteDialog: state.deleteDialog,
-   item: state.item
+    item: state.item
 });
 
 const mapDispatchToProps = dispatch => ({
     setAddDialog: addDialog => dispatch(setAddDialog(addDialog)),
     setEditDialog: editDialog => dispatch(setEditDialog(editDialog)),
+    setDeleteDialog: deleteDialog => dispatch(setDeleteDialog(deleteDialog)),
     setItemValue: (name, value) => dispatch(setItemValue(name, value)),
     setItemObject: item => dispatch(setItemObject(item))
 });

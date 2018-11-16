@@ -1,4 +1,5 @@
 export const SET_ADD_DIALOG = 'SET_ADD_DIALOG';
 export const SET_EDIT_DIALOG = 'SET_EDIT_DIALOG';
+export const SET_DELETE_DIALOG = 'SET_DELETE_DIALOG';
 export const SET_ITEM_VALUE = 'SET_ITEM_VALUE';
 export const SET_ITEM_OBJECT = 'SET_ITEM_OBJECT';
