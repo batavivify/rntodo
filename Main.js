@@ -11,10 +11,13 @@ import TodoItem from './components/TodoItem/TodoIdem';
 import ButtonWithBackground from "./components/ButtonWithBackground/ButtonWithBackground";
 import Dialog from "react-native-dialog";
 import {setDeleteDialog, setAddDialog, setEditDialog, setItemValue, setItemObject} from "./store/actions";
+import Icon from 'react-native-vector-icons/Ionicons';
+import axios from 'axios';
 
 type Props = {};
 
 class Main extends Component<Props> {
+    apiUrl = 'http://todobata.nextgenapps.io/api';
 
     state = {
         width: Dimensions.get("window").width,
@@ -86,6 +89,32 @@ class Main extends Component<Props> {
         this.props.setAddDialog(false);
     };
 
+    userDialogHandler = userDialog => {
+        this.setState({
+            userDialog: userDialog
+        })
+    };
+
+    loginRegisterUserHandler = () => {
+        const _self = this;
+        const url = (this.state.newUser) ? `${this.apiUrl}/auth/register` : `${this.apiUrl}/auth/login`;
+        axios.post(url, {
+            email: this.state.userEmail,
+            password: this.state.userPassword
+        })
+            .then(function (response) {
+                console.log(response);
+                _self.setState({
+                    token: response.data.access_token
+                });
+                _self.userDialogHandler(false);
+            })
+            .catch(function (error) {
+                // TODO: handle error
+                console.log(error);
+            });
+    };
+
     // comparing priorities
     compare = (a, b) => {
         if (a.priority < b.priority)
@@ -107,6 +136,10 @@ class Main extends Component<Props> {
             <ScrollView>
                 <View>
                     <ButtonWithBackground color="#0099CC" onPress={() => this.props.setAddDialog(true)}>Add item</ButtonWithBackground>
+                    {!this.state.token &&
+                    <ButtonWithBackground color="#0099CC" onPress={() => this.userDialogHandler(true)}>
+                        <Icon name="md-log-in" size={20} /> Login/Register
+                    </ButtonWithBackground>}
                 </View>
                 <View style={styles.tabs}>
                     <View style={styles.tab}>
@@ -138,6 +171,14 @@ class Main extends Component<Props> {
                     </Dialog.Description>
                     <Dialog.Button label="Cancel" onPress={() => this.props.setDeleteDialog(false)} />
                     <Dialog.Button label="Delete" onPress={this.deleteItemHandler} />
+                </Dialog.Container>
+                <Dialog.Container visible={this.state.userDialog}>
+                    <Dialog.Title>Login/Register</Dialog.Title>
+                    <Dialog.Input label="Email" style={styles.input} value={this.state.userEmail} onChangeText={(text) => this.setState({'userEmail': text})} keyboardType="email-address" autoCapitalize="none" />
+                    <Dialog.Input label="Password" style={styles.input} value={this.state.userPassword} onChangeText={(text) => this.setState({'userPassword': text})} secureTextEntry={true} autoCapitalize="none" />
+                    <Dialog.Switch label="New user?" value={this.state.newUser}  onValueChange={(value) => this.setState({'newUser': value})} />
+                    <Dialog.Button label="Cancel" onPress={() => this.userDialogHandler(false)} />
+                    <Dialog.Button label="Save" onPress={this.loginRegisterUserHandler} />
                 </Dialog.Container>
             </ScrollView>
         );
