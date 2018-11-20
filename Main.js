@@ -70,43 +70,99 @@ class Main extends Component<Props> {
 
     onSaveHandler = () => {
         const _self = this;
-        axios.post(`${this.apiUrl}/task`, {
+
+        const item = {
+            index: this.props.item.index,
             name: this.props.item.name,
             priority: this.props.item.priority,
-            is_completed: this.props.item.isCompleted
-        }, {
-            headers: {
-                Authorization: `Bearer ${this.state.token}`,
-            }
-        })
-            .then(function (response) {
-                console.log(response);
-                const item = {
-                    index: response.data.id,
-                    name: response.data.name,
-                    priority: response.data.priority,
-                    isCompleted: response.data.is_completed
-                };
-                const items = _self.state.items.slice();
-                items.push(item);
-                _self.setState({
-                    items: items
-                });
-                _self.props.setItemObject({
-                    index: 0,
-                    name: '',
-                    priority: 0,
-                    isCompleted: false
-                });
-                _self.props.setAddDialog(false);
+            isCompleted: this.props.item.isCompleted
+        };
+        if (item.index > 0) {
+            axios.put(`${this.apiUrl}/task/${item.index}`, {
+              name: this.props.item.name,
+              priority: this.props.item.priority,
+              is_completed: this.props.item.isCompleted
+          })
+              .then(function (response) {
+                  console.log(response);
+                  const items = _self.state.items.map(it => {
+                      if (it.index === item.index) {
+                          return item;
+                      }
+                      return it;
+                  });
+                  _self.setState({
+                      items: [ ...items ]
+                  });
+                  _self.props.setItemObject({
+                      index: 0,
+                      name: '',
+                      priority: 0,
+                      isCompleted: false
+                  });
+                  _self.props.setAddDialog(false);
+              })
+              .catch(function (error) {
+                  // TODO: handle error
+                  console.log(error);
+              });
+
+        } else {
+            axios.post(`${this.apiUrl}/task`, {
+                name: this.props.item.name,
+                priority: this.props.item.priority,
+                is_completed: this.props.item.isCompleted
+            }, {
+                headers: {
+                    Authorization: `Bearer ${this.state.token}`,
+                }
             })
-            .catch(function (error) {
-                // TODO: handle error
-                console.log(error);
-            });
+                .then(function (response) {
+                    console.log(response);
+                    const item = {
+                        index: response.data.id,
+                        name: response.data.name,
+                        priority: response.data.priority,
+                        isCompleted: response.data.is_completed
+                    };
+                    const items = _self.state.items.slice();
+                    items.push(item);
+                    _self.setState({
+                        items: items
+                    });
+                    _self.props.setItemObject({
+                        index: 0,
+                        name: '',
+                        priority: 0,
+                        isCompleted: false
+                    });
+                    _self.props.setAddDialog(false);
+                })
+                .catch(function (error) {
+                    // TODO: handle error
+                    console.log(error);
+                });
+        }
     };
 
     deleteItemHandler = () => {
+      const _self = this;
+      const task = this.props.item.index;
+      console.log(task);
+      axios.delete(`${this.apiUrl}/task/${task}`, {
+          headers: {
+              Authorization: `Bearer ${this.state.token}`,
+              'Content-type': 'application/x-www-form-urlencoded'
+          }
+      })
+          .then(function (response){
+              console.log(response);
+        })
+          .catch(function (error) {
+              // TODO: handle error
+              console.log(error);
+          });
+
       const items = this.state.items.filter(item => item.index !== this.props.item.index);
       this.setState({
           items: [ ...items ]
@@ -194,7 +250,7 @@ class Main extends Component<Props> {
                         <Text style={{textAlign: 'center'}}> No tasks. </Text>}
                 </View>
                 <Dialog.Container visible={this.props.addDialog}>
-                    <Dialog.Title>Add task</Dialog.Title>
+                    <Dialog.Title>Add/edit task</Dialog.Title>
                     <Dialog.Input label="Name" style={styles.input} value={this.props.item.name} onChangeText={(text) => this.props.setItemValue('name', text)} />
                     <Dialog.Input label="Priority" keyboardType="number-pad" style={styles.input} value={this.props.item.priority.toString()} onChangeText={(text) => this.props.setItemValue('priority', text)} />
                     <Dialog.Switch label="Completed?" value={this.props.item.isCompleted}  onValueChange={(value) => this.props.setItemValue('isCompleted', value)} />
