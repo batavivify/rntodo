@@ -5,7 +5,9 @@ import {
     View,
     Text,
     StyleSheet,
-    Dimensions
+    Dimensions,
+    AsyncStorage,
+    Switch
 } from 'react-native';
 import TodoItem from './components/TodoItem/TodoIdem';
 import ButtonWithBackground from "./components/ButtonWithBackground/ButtonWithBackground";
@@ -13,6 +15,7 @@ import Dialog from "react-native-dialog";
 import {setDeleteDialog, setAddDialog, setEditDialog, setItemValue, setItemObject} from "./store/actions";
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
+import DefaultInput from './components/DefaultInput/DefaultInput';
 
 type Props = {};
 
@@ -33,8 +36,21 @@ class Main extends Component<Props> {
         userEmail: '',
         userPassword: '',
         newUser: false,
-        token: ''
+        token: '',
+        loadingLogin: false,
+        pageLoaded: false
     };
+
+    async componentDidMount() {
+        const token = await AsyncStorage.getItem('token');
+        if (token) {
+            this.refreshTokenHandler(token);
+        } else {
+            this.setState({
+                pageLoaded: true
+            });
+        }
+    }
 
     onTabClickHandler = selectedTab => {
         this.setState({
@@ -146,7 +162,6 @@ class Main extends Component<Props> {
     };
 
     deleteItemHandler = () => {
-      const _self = this;
       const task = this.props.item.index;
       console.log(task);
       axios.delete(`${this.apiUrl}/task/${task}`, {
@@ -188,24 +203,73 @@ class Main extends Component<Props> {
 
     loginRegisterUserHandler = () => {
         const _self = this;
+        _self.setState({
+            loadingLogin: true
+        });
         const url = (this.state.newUser) ? `${this.apiUrl}/auth/register` : `${this.apiUrl}/auth/login`;
         axios.post(url, {
+            name: this.state.userName,
             email: this.state.userEmail,
             password: this.state.userPassword
         })
             .then(function (response) {
                 console.log(response);
                 _self.setState({
-                    token: response.data.access_token
+                    token: response.data.access_token,
+                    loadingLogin: false
                 }, () => {
                     _self.getItems();
                 });
-                _self.userDialogHandler(false);
+                AsyncStorage.setItem('token', response.data.access_token);
             })
             .catch(function (error) {
                 // TODO: handle error
                 console.log(error);
+                _self.setState({
+                    loadingLogin: false
+                });
             });
+    };
+
+    refreshTokenHandler = token => {
+        const _self = this;
+        /*_self.setState({
+          loadingLogin: true
+        });*/
+        axios.post(`${this.apiUrl}/auth/refresh`, {}, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+            .then(function (response) {
+                console.log(response);
+                _self.setState({
+                    token: response.data.access_token,
+                    pageLoaded: true
+                }, () => {
+                    _self.getItems();
+                });
+                AsyncStorage.setItem('token', response.data.access_token);
+            })
+            .catch(function (error) {
+                // TODO: handle error
+                console.log(error);
+                _self.setState({
+                    pageLoaded: true
+                });
+            });
+    };
+
+    logoutUserHandler = () => {
+        this.setState({
+            items: [],
+            userName: '',
+            userEmail: '',
+            userPassword: '',
+            newUser: false,
+            token: ''
+        });
+        AsyncStorage.removeItem('token');
     };
 
     // comparing priorities
@@ -227,62 +291,129 @@ class Main extends Component<Props> {
 
         return(
             <ScrollView>
+                {this.state.pageLoaded &&
                 <View>
-                    <ButtonWithBackground color="#0099CC" onPress={() => this.props.setAddDialog(true)}>Add item</ButtonWithBackground>
-                    {!this.state.token &&
-                    <ButtonWithBackground color="#0099CC" onPress={() => this.userDialogHandler(true)}>
-                        <Icon name="md-log-in" size={20} /> Login/Register
-                    </ButtonWithBackground>}
+                    {this.state.token ?
+                        <View>
+                            <View style={styles.top_buttons}>
+                                {this.state.token &&
+                                <Text onPress={() => this.logoutUserHandler(true)}>
+                                    <Icon name="md-log-out" size={20} /> Logout
+                                </Text>}
+                            </View>
+                            <View>
+                                <ButtonWithBackground color="#0099CC" onPress={() => this.props.setAddDialog(true)}>Add
+                                    item
+                                </ButtonWithBackground>
+                            </View>
+                            <View style={styles.tabs}>
+                                <View style={styles.tab}>
+                                    <ButtonWithBackground color="#0099CC"
+                                                          onPress={() => this.onTabClickHandler('not_completed')}
+                                                          disabled={this.state.selectedTab === 'not_completed'}>Not
+                                        completed
+                                    </ButtonWithBackground>
+                                </View>
+                                <View style={styles.tab}>
+                                    <ButtonWithBackground color="#0099CC"
+                                                          onPress={() => this.onTabClickHandler('completed')}
+                                                          disabled={this.state.selectedTab === 'completed'}>Completed
+                                    </ButtonWithBackground>
+                                </View>
+                            </View>
+                            <View style={styles.container}>
+                                {items.length > 0 ?
+                                    items.map(item => (
+                                        <TodoItem item={item} width={this.state.width} key={item.index}/>
+                                    )) :
+                                    <Text style={{textAlign: 'center'}}> No tasks. </Text>}
+                            </View>
+                            <Dialog.Container visible={this.props.addDialog}>
+                                <Dialog.Title>Add/edit task</Dialog.Title>
+                                <Dialog.Input label="Name" style={styles.input} value={this.props.item.name}
+                                              onChangeText={(text) => this.props.setItemValue('name', text)}/>
+                                <Dialog.Input label="Priority" keyboardType="number-pad" style={styles.input}
+                                              value={this.props.item.priority.toString()}
+                                              onChangeText={(text) => this.props.setItemValue('priority', text)}/>
+                                <Dialog.Switch label="Completed?" value={this.props.item.isCompleted}
+                                               onValueChange={(value) => this.props.setItemValue('isCompleted', value)}/>
+                                <Dialog.Button label="Cancel" onPress={this.onCancelEditClickHandler}/>
+                                <Dialog.Button label="Save" onPress={this.onSaveHandler}/>
+                            </Dialog.Container>
+                            <Dialog.Container visible={this.props.deleteDialog}>
+                                <Dialog.Title>Remove task</Dialog.Title>
+                                <Dialog.Description>
+                                    {deleteItemText}
+                                </Dialog.Description>
+                                <Dialog.Button label="Cancel" onPress={() => this.props.setDeleteDialog(false)}/>
+                                <Dialog.Button label="Delete" onPress={this.deleteItemHandler}/>
+                            </Dialog.Container>
+                            <Dialog.Container visible={this.state.userDialog}>
+                                <Dialog.Title>Login/Register</Dialog.Title>
+                                <Dialog.Input label="Email" style={styles.input} value={this.state.userEmail}
+                                              onChangeText={(text) => this.setState({'userEmail': text})}
+                                              keyboardType="email-address" autoCapitalize="none"/>
+                                <Dialog.Input label="Password" style={styles.input} value={this.state.userPassword}
+                                              onChangeText={(text) => this.setState({'userPassword': text})}
+                                              secureTextEntry={true} autoCapitalize="none"/>
+                                <Dialog.Switch label="New user?" value={this.state.newUser}
+                                               onValueChange={(value) => this.setState({'newUser': value})}/>
+                                <Dialog.Button label="Cancel" onPress={() => this.userDialogHandler(false)}/>
+                                <Dialog.Button label="Save" onPress={this.loginRegisterUserHandler}/>
+                            </Dialog.Container>
+                        </View>:
+                        <View style={styles.login_form_container}>
+                            <Text style={styles.login_header}>Login/Register</Text>
+                            {this.state.newUser &&
+                            <View>
+                                <Text>Ime</Text>
+                                <DefaultInput
+                                    placeholder="Ime"
+                                    value={this.state.userName}
+                                    onChangeText={(text) => this.setState({'userName': text})}
+                                />
+                            </View>}
+                            <Text>Email adresa</Text>
+                            <DefaultInput
+                                placeholder="Email"
+                                value={this.state.userEmail}
+                                onChangeText={(text) => this.setState({'userEmail': text})}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+                            <Text>Šifra</Text>
+                            <DefaultInput
+                                placeholder="Password"
+                                value={this.state.userPassword}
+                                onChangeText={(text) => this.setState({'userPassword': text})}
+                                secureTextEntry={true}
+                                autoCapitalize="none"
+                            />
+                            <View style={styles.new_user_switch}>
+                                <Text style={styles.new_user_label}>New user?</Text>
+                                <Switch value={this.state.newUser}  onValueChange={(value) => this.setState({'newUser': value})} />
+                            </View>
+                            <ButtonWithBackground color="#0099CC"
+                                                  onPress={this.loginRegisterUserHandler}
+                                                  disabled={this.state.loadingLogin}>Login/Register
+                            </ButtonWithBackground>
+                        </View>}
                 </View>
-                <View style={styles.tabs}>
-                    <View style={styles.tab}>
-                        <ButtonWithBackground color="#0099CC" onPress={() => this.onTabClickHandler('not_completed')} disabled={this.state.selectedTab === 'not_completed'}>Not completed</ButtonWithBackground>
-                    </View>
-                    <View style={styles.tab}>
-                        <ButtonWithBackground color="#0099CC" onPress={() => this.onTabClickHandler('completed')} disabled={this.state.selectedTab === 'completed'}>Completed</ButtonWithBackground>
-                    </View>
-                </View>
-                <View style={styles.container}>
-                    {items.length > 0 ?
-                        items.map(item => (
-                            <TodoItem item={item} width={this.state.width} key={item.index}/>
-                        )) :
-                        <Text style={{textAlign: 'center'}}> No tasks. </Text>}
-                </View>
-                <Dialog.Container visible={this.props.addDialog}>
-                    <Dialog.Title>Add/edit task</Dialog.Title>
-                    <Dialog.Input label="Name" style={styles.input} value={this.props.item.name} onChangeText={(text) => this.props.setItemValue('name', text)} />
-                    <Dialog.Input label="Priority" keyboardType="number-pad" style={styles.input} value={this.props.item.priority.toString()} onChangeText={(text) => this.props.setItemValue('priority', text)} />
-                    <Dialog.Switch label="Completed?" value={this.props.item.isCompleted}  onValueChange={(value) => this.props.setItemValue('isCompleted', value)} />
-                    <Dialog.Button label="Cancel" onPress={this.onCancelEditClickHandler} />
-                    <Dialog.Button label="Save" onPress={this.onSaveHandler} />
-                </Dialog.Container>
-                <Dialog.Container visible={this.props.deleteDialog}>
-                    <Dialog.Title>Remove task</Dialog.Title>
-                    <Dialog.Description>
-                        {deleteItemText}
-                    </Dialog.Description>
-                    <Dialog.Button label="Cancel" onPress={() => this.props.setDeleteDialog(false)} />
-                    <Dialog.Button label="Delete" onPress={this.deleteItemHandler} />
-                </Dialog.Container>
-                <Dialog.Container visible={this.state.userDialog}>
-                    <Dialog.Title>Login/Register</Dialog.Title>
-                    <Dialog.Input label="Email" style={styles.input} value={this.state.userEmail} onChangeText={(text) => this.setState({'userEmail': text})} keyboardType="email-address" autoCapitalize="none" />
-                    <Dialog.Input label="Password" style={styles.input} value={this.state.userPassword} onChangeText={(text) => this.setState({'userPassword': text})} secureTextEntry={true} autoCapitalize="none" />
-                    <Dialog.Switch label="New user?" value={this.state.newUser}  onValueChange={(value) => this.setState({'newUser': value})} />
-                    <Dialog.Button label="Cancel" onPress={() => this.userDialogHandler(false)} />
-                    <Dialog.Button label="Save" onPress={this.loginRegisterUserHandler} />
-                </Dialog.Container>
+                }
             </ScrollView>
         );
     }
-
 }
 
 
 const styles = StyleSheet.create({
     container: {
         flex: 1
+    },
+    top_buttons: {
+        flexDirection: 'row',
+        flex: 1,
+        justifyContent: 'flex-end'
     },
     input: {
         borderWidth: 1,
@@ -294,6 +425,22 @@ const styles = StyleSheet.create({
     },
     tab: {
         flex: 1
+    },
+    login_form_container: {
+        padding: 15
+    },
+    login_header: {
+        textAlign: 'center',
+        fontSize: 18,
+        marginTop: 30,
+        marginBottom: 15
+    },
+    new_user_switch: {
+        flexDirection: 'row',
+        flex: 1
+    },
+    new_user_label: {
+        marginRight: 15
     }
 });
 
