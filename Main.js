@@ -6,8 +6,7 @@ import {
     Text,
     StyleSheet,
     Dimensions,
-    AsyncStorage,
-    Switch
+    AsyncStorage
 } from 'react-native';
 import TodoItem from './components/TodoItem/TodoIdem';
 import ButtonWithBackground from "./components/ButtonWithBackground/ButtonWithBackground";
@@ -16,11 +15,12 @@ import {setDeleteDialog, setAddDialog, setEditDialog, setItemValue, setItemObjec
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import DefaultInput from './components/DefaultInput/DefaultInput';
+import Loader from './components/Loader/Loader';
 
 type Props = {};
 
 class Main extends Component<Props> {
-    apiUrl = 'https://f4b3467e.ngrok.io/api';
+    apiUrl = 'https://e436b4cb.ngrok.io/api';
 
     state = {
         width: Dimensions.get("window").width,
@@ -38,7 +38,8 @@ class Main extends Component<Props> {
         newUser: false,
         token: '',
         loadingLogin: false,
-        pageLoaded: false
+        pageLoaded: false,
+        loading: false,
     };
 
     async componentDidMount() {
@@ -60,6 +61,9 @@ class Main extends Component<Props> {
 
     getItems = () => {
         const _self = this;
+        _self.setState({
+            loading: true
+        });
         axios.get(`${this.apiUrl}/tasks`, {
             headers: {
                 Authorization: `Bearer ${this.state.token}`,
@@ -75,11 +79,15 @@ class Main extends Component<Props> {
                 }));
                 console.log(items);
                 _self.setState({
-                    items: items
+                    items: items,
+                    loading: false
                 });
             })
             .catch(function (error) {
                 // TODO: handle error
+                _self.setState({
+                    loading: false
+                });
                 console.log(error);
             });
     };
@@ -87,83 +95,112 @@ class Main extends Component<Props> {
     onSaveHandler = () => {
         const _self = this;
 
-        const item = {
-            index: this.props.item.index,
-            name: this.props.item.name,
-            priority: this.props.item.priority,
-            isCompleted: this.props.item.isCompleted
-        };
-        if (item.index > 0) {
-            axios.put(`${this.apiUrl}/task/${item.index}`, {
-              name: this.props.item.name,
-              priority: this.props.item.priority,
-              is_completed: this.props.item.isCompleted
-          })
-              .then(function (response) {
-                  console.log(response);
-                  const items = _self.state.items.map(it => {
-                      if (it.index === item.index) {
-                          return item;
-                      }
-                      return it;
-                  });
-                  _self.setState({
-                      items: [ ...items ]
-                  });
-                  _self.props.setItemObject({
-                      index: 0,
-                      name: '',
-                      priority: 0,
-                      isCompleted: false
-                  });
-                  _self.props.setAddDialog(false);
-              })
-              .catch(function (error) {
-                  // TODO: handle error
-                  console.log(error);
-              });
+        const priorityValidated = this.props.item.priority;
+        const nameValidated = this.props.item.name;
 
-        } else {
-            axios.post(`${this.apiUrl}/task`, {
-                name: this.props.item.name,
-                priority: this.props.item.priority,
-                is_completed: this.props.item.isCompleted
-            }, {
-                headers: {
-                    Authorization: `Bearer ${this.state.token}`,
-                }
-            })
-                .then(function (response) {
-                    console.log(response);
-                    const item = {
-                        index: response.data.id,
-                        name: response.data.name,
-                        priority: response.data.priority,
-                        isCompleted: response.data.is_completed
-                    };
-                    const items = _self.state.items.slice();
-                    items.push(item);
+        if((priorityValidated >= 0 && priorityValidated <= 9) && priorityValidated !== '') {
+            if(nameValidated !== '') {
+                const item = {
+                    index: this.props.item.index,
+                    name: nameValidated,
+                    priority: priorityValidated,
+                    isCompleted: this.props.item.isCompleted
+                };
+                if (item.index > 0) {
                     _self.setState({
-                        items: items
+                        loading: true
                     });
-                    _self.props.setItemObject({
-                        index: 0,
-                        name: '',
-                        priority: 0,
-                        isCompleted: false
+                    axios.put(`${this.apiUrl}/task/${item.index}`, {
+                        name: this.props.item.name,
+                        priority: this.props.item.priority,
+                        is_completed: this.props.item.isCompleted
+                    })
+                        .then(function (response) {
+                            console.log(response);
+                            const items = _self.state.items.map(it => {
+                                if (it.index === item.index) {
+                                    return item;
+                                }
+                                return it;
+                            });
+                            _self.setState({
+                                items: [ ...items ],
+                                loading: false
+                            });
+                            _self.props.setItemObject({
+                                index: 0,
+                                name: '',
+                                priority: 0,
+                                isCompleted: false
+                            });
+                            _self.props.setAddDialog(false);
+                        })
+                        .catch(function (error) {
+                            // TODO: handle error
+                            _self.setState({
+                                loading: false
+                            });
+                            console.log(error);
+                        });
+
+                } else {
+                    _self.setState({
+                        loading: true
                     });
-                    _self.props.setAddDialog(false);
-                })
-                .catch(function (error) {
-                    // TODO: handle error
-                    console.log(error);
-                });
+                    axios.post(`${this.apiUrl}/task`, {
+                        name: this.props.item.name,
+                        priority: this.props.item.priority,
+                        is_completed: this.props.item.isCompleted
+                    }, {
+                        headers: {
+                            Authorization: `Bearer ${this.state.token}`,
+                        }
+                    })
+                        .then(function (response) {
+                            console.log(response);
+                            const item = {
+                                index: response.data.id,
+                                name: response.data.name,
+                                priority: response.data.priority,
+                                isCompleted: response.data.is_completed
+                            };
+                            const items = _self.state.items.slice();
+                            items.push(item);
+                            _self.setState({
+                                items: items,
+                                loading: false
+                            });
+                            _self.props.setItemObject({
+                                index: 0,
+                                name: '',
+                                priority: 0,
+                                isCompleted: false
+                            });
+                            _self.props.setAddDialog(false);
+                        })
+                        .catch(function (error) {
+                            // TODO: handle error
+                            _self.setState({
+                                loading: false
+                            });
+                            console.log(error);
+                        });
+                }
+            } else {
+                alert('Task name should not be empty!');
+            }
+        } else {
+            alert('Priority must be between 0 and 9!');
         }
     };
 
     deleteItemHandler = () => {
       const task = this.props.item.index;
+      const _self = this;
       console.log(task);
+        _self.setState({
+            loading: true
+        });
       axios.delete(`${this.apiUrl}/task/${task}`, {
           headers: {
               Authorization: `Bearer ${this.state.token}`,
@@ -171,10 +208,16 @@ class Main extends Component<Props> {
           }
       })
           .then(function (response){
+              _self.setState({
+                  loading: false
+              });
               console.log(response);
         })
           .catch(function (error) {
               // TODO: handle error
+              _self.setState({
+                  loading: false
+              });
               console.log(error);
           });
 
@@ -195,16 +238,11 @@ class Main extends Component<Props> {
         this.props.setAddDialog(false);
     };
 
-    userDialogHandler = userDialog => {
-        this.setState({
-            userDialog: userDialog
-        })
-    };
-
     loginRegisterUserHandler = () => {
         const _self = this;
         _self.setState({
-            loadingLogin: true
+            loadingLogin: true,
+            loading: true
         });
         const url = (this.state.newUser) ? `${this.apiUrl}/auth/register` : `${this.apiUrl}/auth/login`;
         axios.post(url, {
@@ -216,7 +254,8 @@ class Main extends Component<Props> {
                 console.log(response);
                 _self.setState({
                     token: response.data.access_token,
-                    loadingLogin: false
+                    loadingLogin: false,
+                    loading: false
                 }, () => {
                     _self.getItems();
                 });
@@ -226,7 +265,8 @@ class Main extends Component<Props> {
                 // TODO: handle error
                 console.log(error);
                 _self.setState({
-                    loadingLogin: false
+                    loadingLogin: false,
+                    loading: false
                 });
             });
     };
@@ -291,6 +331,9 @@ class Main extends Component<Props> {
 
         return(
             <ScrollView>
+                <Loader
+                    loading={this.state.loading}
+                />
                 {this.state.pageLoaded &&
                 <View>
                     {this.state.token ?
@@ -310,14 +353,15 @@ class Main extends Component<Props> {
                                 <View style={styles.tab}>
                                     <ButtonWithBackground color="#0099CC"
                                                           onPress={() => this.onTabClickHandler('not_completed')}
-                                                          disabled={this.state.selectedTab === 'not_completed'}>Not
-                                        completed
+                                                          disabled={this.state.selectedTab === 'not_completed'}>
+                                        Not completed
                                     </ButtonWithBackground>
                                 </View>
                                 <View style={styles.tab}>
                                     <ButtonWithBackground color="#0099CC"
                                                           onPress={() => this.onTabClickHandler('completed')}
-                                                          disabled={this.state.selectedTab === 'completed'}>Completed
+                                                          disabled={this.state.selectedTab === 'completed'}>
+                                        Completed
                                     </ButtonWithBackground>
                                 </View>
                             </View>
@@ -332,7 +376,7 @@ class Main extends Component<Props> {
                                 <Dialog.Title>Add/edit task</Dialog.Title>
                                 <Dialog.Input label="Name" style={styles.input} value={this.props.item.name}
                                               onChangeText={(text) => this.props.setItemValue('name', text)}/>
-                                <Dialog.Input label="Priority" keyboardType="number-pad" style={styles.input}
+                                <Dialog.Input label="Priority (0-9)" keyboardType="numeric" style={styles.input}
                                               value={this.props.item.priority.toString()}
                                               onChangeText={(text) => this.props.setItemValue('priority', text)}/>
                                 <Dialog.Switch label="Completed?" value={this.props.item.isCompleted}
@@ -348,32 +392,19 @@ class Main extends Component<Props> {
                                 <Dialog.Button label="Cancel" onPress={() => this.props.setDeleteDialog(false)}/>
                                 <Dialog.Button label="Delete" onPress={this.deleteItemHandler}/>
                             </Dialog.Container>
-                            <Dialog.Container visible={this.state.userDialog}>
-                                <Dialog.Title>Login/Register</Dialog.Title>
-                                <Dialog.Input label="Email" style={styles.input} value={this.state.userEmail}
-                                              onChangeText={(text) => this.setState({'userEmail': text})}
-                                              keyboardType="email-address" autoCapitalize="none"/>
-                                <Dialog.Input label="Password" style={styles.input} value={this.state.userPassword}
-                                              onChangeText={(text) => this.setState({'userPassword': text})}
-                                              secureTextEntry={true} autoCapitalize="none"/>
-                                <Dialog.Switch label="New user?" value={this.state.newUser}
-                                               onValueChange={(value) => this.setState({'newUser': value})}/>
-                                <Dialog.Button label="Cancel" onPress={() => this.userDialogHandler(false)}/>
-                                <Dialog.Button label="Save" onPress={this.loginRegisterUserHandler}/>
-                            </Dialog.Container>
                         </View>:
                         <View style={styles.login_form_container}>
-                            <Text style={styles.login_header}>Login/Register</Text>
+                            <Text style={styles.login_header}>{this.state.newUser?'Create new account':'Login'}</Text>
                             {this.state.newUser &&
                             <View>
-                                <Text>Ime</Text>
+                                <Text>Name</Text>
                                 <DefaultInput
-                                    placeholder="Ime"
+                                    placeholder="Name"
                                     value={this.state.userName}
                                     onChangeText={(text) => this.setState({'userName': text})}
                                 />
                             </View>}
-                            <Text>Email adresa</Text>
+                            <Text>Email</Text>
                             <DefaultInput
                                 placeholder="Email"
                                 value={this.state.userEmail}
@@ -381,7 +412,7 @@ class Main extends Component<Props> {
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                             />
-                            <Text>Šifra</Text>
+                            <Text>Password</Text>
                             <DefaultInput
                                 placeholder="Password"
                                 value={this.state.userPassword}
@@ -390,12 +421,26 @@ class Main extends Component<Props> {
                                 autoCapitalize="none"
                             />
                             <View style={styles.new_user_switch}>
-                                <Text style={styles.new_user_label}>New user?</Text>
-                                <Switch value={this.state.newUser}  onValueChange={(value) => this.setState({'newUser': value})} />
+                                <Text style={styles.new_user_label}>
+                                    {this.state.newUser?
+                                        <Text>Have an account?
+                                            <Text
+                                                onPress={() => this.setState({'newUser': false})}
+                                                style={{color: 'red'}}
+                                            > Login!</Text>
+                                        </Text>:
+                                        <Text>New user?
+                                            <Text
+                                                onPress={() => this.setState({'newUser': true})}
+                                                style={{color: 'red'}}
+                                            > Create new account!</Text>
+                                        </Text>}
+                                </Text>
+                                {/*<Switch value={this.state.newUser}  onValueChange={(value) => this.setState({'newUser': value})} />*/}
                             </View>
                             <ButtonWithBackground color="#0099CC"
                                                   onPress={this.loginRegisterUserHandler}
-                                                  disabled={this.state.loadingLogin}>Login/Register
+                                                  disabled={this.state.loadingLogin}>{this.state.newUser?'Create':'Login'}
                             </ButtonWithBackground>
                         </View>}
                 </View>
