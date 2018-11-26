@@ -8,7 +8,7 @@ import {
     Dimensions,
     AsyncStorage
 } from 'react-native';
-import TodoItem from './components/TodoItem/TodoIdem';
+import TodoItem from './components/TodoItem/TodoItem';
 import ButtonWithBackground from "./components/ButtonWithBackground/ButtonWithBackground";
 import Dialog from "react-native-dialog";
 import {setDeleteDialog, setAddDialog, setEditDialog, setItemValue, setItemObject} from "./store/actions";
@@ -20,7 +20,7 @@ import Loader from './components/Loader/Loader';
 type Props = {};
 
 class Main extends Component<Props> {
-    apiUrl = 'https://e436b4cb.ngrok.io/api';
+    apiUrl = 'https://80eb51b3.ngrok.io/api';
 
     state = {
         width: Dimensions.get("window").width,
@@ -241,34 +241,49 @@ class Main extends Component<Props> {
     loginRegisterUserHandler = () => {
         const _self = this;
         _self.setState({
-            loadingLogin: true,
-            loading: true
+            loadingLogin: true
         });
         const url = (this.state.newUser) ? `${this.apiUrl}/auth/register` : `${this.apiUrl}/auth/login`;
-        axios.post(url, {
-            name: this.state.userName,
-            email: this.state.userEmail,
-            password: this.state.userPassword
-        })
-            .then(function (response) {
-                console.log(response);
+        const emailValidated = this.state.userEmail;
+        const passwordValidated = this.state.userPassword;
+
+        if(emailValidated !== '') {
+            if(passwordValidated !== '') {
                 _self.setState({
-                    token: response.data.access_token,
-                    loadingLogin: false,
-                    loading: false
-                }, () => {
-                    _self.getItems();
+                   loading: true
                 });
-                AsyncStorage.setItem('token', response.data.access_token);
-            })
-            .catch(function (error) {
-                // TODO: handle error
-                console.log(error);
-                _self.setState({
-                    loadingLogin: false,
-                    loading: false
-                });
-            });
+                axios.post(url, {
+                    name: this.state.userName,
+                    email: emailValidated,
+                    password: passwordValidated
+                })
+                    .then(function (response) {
+                        console.log(response);
+                        _self.setState({
+                            token: response.data.access_token,
+                            loadingLogin: false,
+                            loading: false
+                        }, () => {
+                            _self.getItems();
+                        });
+                        AsyncStorage.setItem('token', response.data.access_token);
+                    })
+                    .catch(function (error) {
+                        // TODO: handle error
+                        console.log(error);
+                        _self.setState({
+                            loadingLogin: false,
+                            loading: false
+                        });
+                    });
+            } else {
+                alert('Password should not be empty!');
+            }
+        } else {
+            alert('Email should not be empty!');
+        }
+
+
     };
 
     refreshTokenHandler = token => {
@@ -439,8 +454,7 @@ class Main extends Component<Props> {
                                 {/*<Switch value={this.state.newUser}  onValueChange={(value) => this.setState({'newUser': value})} />*/}
                             </View>
                             <ButtonWithBackground color="#0099CC"
-                                                  onPress={this.loginRegisterUserHandler}
-                                                  disabled={this.state.loadingLogin}>{this.state.newUser?'Create':'Login'}
+                                                  onPress={this.loginRegisterUserHandler}>{this.state.newUser?'Create':'Login'}
                             </ButtonWithBackground>
                         </View>}
                 </View>
